@@ -170,17 +170,7 @@ const ProductGallery = () => {
             </span>
           </Link>
           <div className="flex gap-4">
-            {user ? (
-              <Link to="/admin" className={`transition-opacity duration-300 ${showAdmin ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                <Button className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 shadow-lg shadow-red-500/50">
-                  Admin Dashboard
-                </Button>
-              </Link>
-            ) : (
-              <Link to="/login">
-                <Button variant="outline">Sign In</Button>
-              </Link>
-            )}
+            {/* Le bouton Sign In est totalement supprimé. Le bouton Admin peut rester selon votre logique. */}
           </div>
         </div>
       </nav>
