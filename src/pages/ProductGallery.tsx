@@ -18,6 +18,7 @@ const ProductGallery = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [search, setSearch] = useState("");
   const { user } = useAuth();
 
   const showAdminTimer = useRef<number | null>(null);
@@ -72,6 +73,16 @@ const ProductGallery = () => {
       </div>
     );
   }
+
+  // Filtrage des produits selon la recherche
+  const filteredProducts = products.filter(product => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      product.name.toLowerCase().includes(query) ||
+      (product.description ? product.description.toLowerCase().includes(query) : false)
+    );
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -159,8 +170,8 @@ const ProductGallery = () => {
 
       {/* Navigation */}
       <nav className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link to="/" className="text-xl font-black">
+        <div className="container mx-auto px-4 py-4 flex flex-row items-center gap-6">
+          <Link to="/" className="text-xl font-black mr-4">
             <span className="text-red-500 hover:text-red-400 transition-colors duration-300" style={{
               textShadow: '0 0 10px rgba(255, 0, 0, 0.5)',
               letterSpacing: '2px',
@@ -169,32 +180,39 @@ const ProductGallery = () => {
               Store
             </span>
           </Link>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher un produit..."
+            className="w-full max-w-lg px-5 py-2 rounded-lg bg-zinc-900 text-white border border-red-600 placeholder:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 shadow"
+            style={{marginRight: '1rem'}}
+          />
           <div className="flex gap-4">
-          
-              <Link to="/admin" className={`transition-opacity duration-300 ${showAdmin ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                <Button className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 shadow-lg shadow-red-500/50">
-                  Admin Dashboard
-                </Button>
-              </Link>
-           
+            <Link to="/admin" className={`transition-opacity duration-300 ${showAdmin ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              <Button className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 shadow-lg shadow-red-500/50">
+                Admin Dashboard
+              </Button>
+            </Link>
           </div>
         </div>
       </nav>
 
+      {/* La barre de recherche est maintenant dans la navigation */}
       {/* Products Grid */}
-      <div className="container mx-auto px-4 py-12">
-        {products.length === 0 ? (
+      <div className="container mx-auto px-4 pb-12">
+        {filteredProducts.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground text-lg">No products available yet.</p>
+            <p className="text-muted-foreground text-lg">Aucun produit trouvé.</p>
             {user && (
               <Link to="/admin">
-                <Button className="mt-4">Add Your First Product</Button>
+                <Button className="mt-4">Ajouter un produit</Button>
               </Link>
             )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <Link key={product.id} to={`/product/${product.id}`}>
                 <Card className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
                   <div className="aspect-square overflow-hidden bg-muted">
