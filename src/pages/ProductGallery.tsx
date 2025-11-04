@@ -170,8 +170,9 @@ const ProductGallery = () => {
             </span>
           </Link>
           <div className="flex gap-4">
-            {user ? (
-              <Link to="/admin" className={`transition-opacity duration-300 ${showAdmin ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            {/* Show Admin link if user is logged in OR if showAdmin is true (triggered by Ctrl+Y) */}
+            {(user || showAdmin) ? (
+              <Link to="/admin" className={`transition-opacity duration-300 ${user || showAdmin ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <Button className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 shadow-lg shadow-red-500/50">
                   Admin Dashboard
                 </Button>
