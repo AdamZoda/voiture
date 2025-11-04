@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -20,18 +20,33 @@ const ProductGallery = () => {
   const [showAdmin, setShowAdmin] = useState(false);
   const { user } = useAuth();
 
+  const showAdminTimer = useRef<number | null>(null);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === 'Y') {
-        event.preventDefault();
+      // Make key check case-insensitive and avoid blocking default browser shortcuts
+      if (event.ctrlKey && event.key.toLowerCase() === 'y') {
+        // Don't call event.preventDefault() here — avoid interfering with other behavior
         setShowAdmin(true);
-        // Cache le bouton après 2 secondes
-        setTimeout(() => setShowAdmin(false), 2000);
+        // Clear any previous timer so we reliably hide after the latest keypress
+        if (showAdminTimer.current) {
+          window.clearTimeout(showAdminTimer.current);
+        }
+        showAdminTimer.current = window.setTimeout(() => {
+          setShowAdmin(false);
+          showAdminTimer.current = null;
+        }, 2000) as unknown as number;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (showAdminTimer.current) {
+        window.clearTimeout(showAdminTimer.current);
+        showAdminTimer.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
