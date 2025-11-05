@@ -16,6 +16,9 @@ interface Product {
   image_url: string | null;
   category: string | null;
   featured: boolean;
+  stock: number;
+  on_sale?: boolean;
+  sale_price?: number | null;
 }
 
 const ProductGallery = () => {
@@ -63,14 +66,16 @@ const ProductGallery = () => {
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, description, price, image_url, category, created_at, featured')
+      .select('id, name, description, price, image_url, category, created_at, featured, stock, on_sale, sale_price')
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      // Ajoute la propriété category si elle n'existe pas
       setProducts(data.map(product => ({
         ...product,
-        category: typeof product.category === 'string' ? product.category : null
+        category: typeof product.category === 'string' ? product.category : null,
+        stock: typeof product.stock === 'number' ? product.stock : 0,
+        on_sale: !!product.on_sale,
+        sale_price: product.sale_price !== undefined && product.sale_price !== null ? Number(product.sale_price) : null,
       })));
     }
     setLoading(false);
@@ -300,11 +305,18 @@ const ProductGallery = () => {
                       <Card className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
                         <div className="aspect-square overflow-hidden bg-muted">
                           {product.image_url ? (
-                            <img
-                              src={product.image_url}
-                              alt={product.name}
-                              className="h-full w-full object-cover transition-transform hover:scale-105"
-                            />
+                            <div className="relative h-full w-full">
+                              <img
+                                src={product.image_url}
+                                alt={product.name}
+                                className="h-full w-full object-cover transition-transform hover:scale-105"
+                              />
+                              {product.stock === 0 && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-10">
+                                  <span className="text-3xl font-extrabold text-white bg-red-600/90 px-8 py-4 rounded-lg shadow-lg border-4 border-white uppercase tracking-widest" style={{letterSpacing: '4px'}}>sold out</span>
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <div className="h-full w-full flex items-center justify-center">
                               <span className="text-muted-foreground">No image</span>
@@ -320,8 +332,16 @@ const ProductGallery = () => {
                           )}
                         </CardContent>
                         <CardFooter className="p-4 pt-0 flex justify-between items-center">
-                          <span className="text-2xl font-bold text-primary">
-                            ${Number(product.price).toFixed(2)}
+                          <span className="flex items-center gap-2">
+                            {product.on_sale && product.sale_price ? (
+                              <>
+                                <span className="text-xl font-semibold text-gray-400 line-through">${Number(product.price).toFixed(2)}</span>
+                                <span className="text-2xl font-bold text-red-500">${Number(product.sale_price).toFixed(2)}</span>
+                                <span className="ml-2 px-2 py-1 text-xs font-bold bg-orange-500 text-white rounded shadow">Promo</span>
+                              </>
+                            ) : (
+                              <span className="text-2xl font-bold text-primary">${Number(product.price).toFixed(2)}</span>
+                            )}
                           </span>
                         </CardFooter>
                       </Card>
@@ -342,11 +362,18 @@ const ProductGallery = () => {
                     <Card className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
                       <div className="aspect-square overflow-hidden bg-muted">
                         {product.image_url ? (
-                          <img
-                            src={product.image_url}
-                            alt={product.name}
-                            className="h-full w-full object-cover transition-transform hover:scale-105"
-                          />
+                          <div className="relative h-full w-full">
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="h-full w-full object-cover transition-transform hover:scale-105"
+                            />
+                            {product.stock === 0 && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-10">
+                                <span className="text-3xl font-extrabold text-white bg-red-600/90 px-8 py-4 rounded-lg shadow-lg border-4 border-white uppercase tracking-widest" style={{letterSpacing: '4px'}}>sold out</span>
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <div className="h-full w-full flex items-center justify-center">
                             <span className="text-muted-foreground">No image</span>
@@ -362,8 +389,16 @@ const ProductGallery = () => {
                         )}
                       </CardContent>
                       <CardFooter className="p-4 pt-0 flex justify-between items-center">
-                        <span className="text-2xl font-bold text-primary">
-                          ${Number(product.price).toFixed(2)}
+                        <span className="flex items-center gap-2">
+                          {product.on_sale && product.sale_price ? (
+                            <>
+                              <span className="text-xl font-semibold text-gray-400 line-through">${Number(product.price).toFixed(2)}</span>
+                              <span className="text-2xl font-bold text-red-500">${Number(product.sale_price).toFixed(2)}</span>
+                              <span className="ml-2 px-2 py-1 text-xs font-bold bg-orange-500 text-white rounded shadow">Promo</span>
+                            </>
+                          ) : (
+                            <span className="text-2xl font-bold text-primary">${Number(product.price).toFixed(2)}</span>
+                          )}
                         </span>
                       </CardFooter>
                     </Card>

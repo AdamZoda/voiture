@@ -7,11 +7,14 @@ import { ArrowLeft, MessageCircle } from 'lucide-react';
 interface Product {
   id: string;
   name: string;
+  model_name?: string | null;
   description: string | null;
   price: number;
   image_url: string | null;
   youtube_url: string | null;
   category: string | null;
+  on_sale?: boolean;
+  sale_price?: number | null;
 }
 
 const ProductDetail = () => {
@@ -32,7 +35,7 @@ const ProductDetail = () => {
   const fetchProduct = async (productId: string) => {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select('*, on_sale, sale_price, model_name')
       .eq('id', productId)
       .maybeSingle();
 
@@ -85,14 +88,15 @@ const ProductDetail = () => {
       <div className="container mx-auto px-4 py-12">
         <div className="grid md:grid-cols-2 gap-12 max-w-6xl mx-auto">
           {/* Product Image */}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-red-600 to-red-900 rounded-xl blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
-            <div className="relative w-full h-[400px] rounded-xl overflow-hidden bg-black">
+          <div className="relative group w-full h-[400px]">
+            {/* Un seul cadre LED rouge arrondi */}
+            <div className="absolute inset-0 rounded-3xl pointer-events-none z-10" style={{boxShadow: '0 0 32px 8px #ff1a1a, 0 0 8px 2px #ff1a1a'}}></div>
+            <div className="relative w-full h-full rounded-3xl overflow-hidden bg-black border-4 border-red-700 shadow-lg">
               {product.image_url ? (
                 <img
                   src={product.image_url}
                   alt={product.name}
-                  className="w-full h-full object-contain transform group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-contain transform group-hover:scale-105 transition-transform duration-500 rounded-2xl"
                 />
               ) : (
                 <div className="h-full w-full flex items-center justify-center">
@@ -108,16 +112,24 @@ const ProductDetail = () => {
               <h1 className="text-5xl font-black mb-4 bg-gradient-to-r from-red-500 to-red-700 text-transparent bg-clip-text transform hover:scale-105 transition-transform cursor-default">
                 {product.name}
               </h1>
-              {product.category && (
+              {product.model_name && (
                 <div className="mb-4">
-                  <span className="px-3 py-1 bg-red-500/20 border border-red-500 rounded-full text-red-400 text-sm font-semibold">
-                    {product.category}
+                  <span className="px-3 py-1 bg-red-500/20 border border-red-500 rounded-full text-red-300 text-base font-bold tracking-widest uppercase shadow">
+                    {product.model_name}
                   </span>
                 </div>
               )}
-              <p className="text-4xl font-bold text-red-500 mb-6 animate-pulse">
-                ${Number(product.price).toFixed(2)}
-              </p>
+              <div className="mb-6 flex items-center gap-3">
+                {product.on_sale && product.sale_price ? (
+                  <>
+                    <span className="text-3xl font-semibold text-gray-400 line-through">${Number(product.price).toFixed(2)}</span>
+                    <span className="text-4xl font-bold text-orange-500 animate-pulse">${Number(product.sale_price).toFixed(2)}</span>
+                    <span className="px-3 py-1 text-xs font-bold bg-orange-500 text-white rounded shadow">Promo</span>
+                  </>
+                ) : (
+                  <span className="text-4xl font-bold text-red-500 animate-pulse">${Number(product.price).toFixed(2)}</span>
+                )}
+              </div>
               {product.description && (
                 <p className="text-xl text-gray-300 leading-relaxed border-l-4 border-red-500 pl-4">
                   {product.description}

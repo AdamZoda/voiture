@@ -45,6 +45,11 @@ const ProductForm = () => {
     youtube_url: '',
     category: '',
     featured: false,
+    stock: 1, // Par défaut, 1 en stock
+    soldOut: false, // Pour la case à cocher
+    newCategory: '',
+    on_sale: false, // Pour la promo
+    sale_price: '', // Prix promo (string pour l'input)
   });
   const [categories, setCategories] = useState<string[]>([]);
 
@@ -88,6 +93,11 @@ const ProductForm = () => {
         youtube_url: data.youtube_url || '',
         category: data.category || '',
         featured: data.featured || false,
+        stock: typeof data.stock === 'number' ? data.stock : 1,
+        soldOut: data.stock === 0,
+        newCategory: '',
+        on_sale: !!data.on_sale,
+        sale_price: data.sale_price ? data.sale_price.toString() : '',
       });
     }
   };
@@ -117,7 +127,10 @@ const ProductForm = () => {
       image_url: formData.image_url.trim() || null,
       youtube_url: formData.youtube_url.trim() || null,
       category: formData.category || null,
-      featured: formData.featured, // Ajouter featured aux données à sauvegarder
+      featured: formData.featured,
+      stock: formData.soldOut ? 0 : (typeof formData.stock === 'number' ? formData.stock : 1),
+      on_sale: !!formData.on_sale,
+      sale_price: formData.on_sale && formData.sale_price ? parseFloat(formData.sale_price) : null,
     };
 
     if (isEditing && id) {
@@ -368,6 +381,7 @@ const ProductForm = () => {
                 )}
               </div>
 
+
               <div className="flex items-center space-x-2 bg-zinc-900 p-4 rounded-lg border border-red-600">
                 <input
                   type="checkbox"
@@ -379,6 +393,44 @@ const ProductForm = () => {
                 <Label htmlFor="featured" className="text-white cursor-pointer select-none">
                   Afficher en suggestion (première ligne)
                 </Label>
+              </div>
+
+              <div className="flex items-center space-x-2 bg-zinc-900 p-4 rounded-lg border border-yellow-600 mt-2">
+                <input
+                  type="checkbox"
+                  id="soldOut"
+                  checked={formData.soldOut}
+                  onChange={(e) => setFormData(prev => ({ ...prev, soldOut: e.target.checked }))}
+                  className="w-4 h-4 text-yellow-600 border-yellow-600 rounded focus:ring-yellow-500"
+                />
+                <Label htmlFor="soldOut" className="text-yellow-300 cursor-pointer select-none">
+                  Produit vendu (plus de stock)
+                </Label>
+              </div>
+
+              {/* Promo */}
+              <div className="flex items-center space-x-2 bg-zinc-900 p-4 rounded-lg border border-green-600 mt-2">
+                <input
+                  type="checkbox"
+                  id="on_sale"
+                  checked={formData.on_sale}
+                  onChange={e => setFormData(prev => ({ ...prev, on_sale: e.target.checked, sale_price: e.target.checked ? prev.sale_price : '' }))}
+                  className="w-4 h-4 text-green-600 border-green-600 rounded focus:ring-green-500"
+                />
+                <Label htmlFor="on_sale" className="text-green-300 cursor-pointer select-none">
+                  Produit en promotion
+                </Label>
+                {formData.on_sale && (
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.sale_price}
+                    onChange={e => setFormData(prev => ({ ...prev, sale_price: e.target.value }))}
+                    placeholder="Nouveau prix en promo"
+                    className="ml-4 w-40 border-green-600"
+                  />
+                )}
               </div>
 
               <div className="flex gap-4">
