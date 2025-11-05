@@ -319,7 +319,7 @@ const AdminDashboard = () => {
                       <TableRow>
                         <TableHead>Image</TableHead>
                         <TableHead>Name</TableHead>
-                        <TableHead>Description</TableHead>
+                        <TableHead className="max-w-[100px] w-[100px]">Description</TableHead> {/* Réduit la largeur */}
                         <TableHead>Price</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -343,7 +343,8 @@ const AdminDashboard = () => {
                             </div>
                           </TableCell>
                           <TableCell className="font-medium">{product.name}</TableCell>
-                          <TableCell className="max-w-xs truncate">
+                          <TableCell className="max-w-[100px] w-[100px] truncate">
+                            {/* Réduit la largeur et tronque le texte */}
                             {product.description || '-'}
                           </TableCell>
                           <TableCell>${Number(product.price).toFixed(2)}</TableCell>
