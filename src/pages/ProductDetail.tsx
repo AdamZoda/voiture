@@ -11,6 +11,7 @@ interface Product {
   price: number;
   image_url: string | null;
   youtube_url: string | null;
+  category: string | null;
 }
 
 const ProductDetail = () => {
@@ -107,6 +108,13 @@ const ProductDetail = () => {
               <h1 className="text-5xl font-black mb-4 bg-gradient-to-r from-red-500 to-red-700 text-transparent bg-clip-text transform hover:scale-105 transition-transform cursor-default">
                 {product.name}
               </h1>
+              {product.category && (
+                <div className="mb-4">
+                  <span className="px-3 py-1 bg-red-500/20 border border-red-500 rounded-full text-red-400 text-sm font-semibold">
+                    {product.category}
+                  </span>
+                </div>
+              )}
               <p className="text-4xl font-bold text-red-500 mb-6 animate-pulse">
                 ${Number(product.price).toFixed(2)}
               </p>

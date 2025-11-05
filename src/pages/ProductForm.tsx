@@ -11,13 +11,24 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 const productSchema = z.object({
-  name: z.string().trim().min(1, { message: 'Name is required' }).max(200, { message: 'Name must be less than 200 characters' }),
-  model_name: z.string().min(1, { message: 'Model name is required' }), // Suppression des restrictions sur les caractères
-  description: z.string().max(1000, { message: 'Description must be less than 1000 characters' }).optional(),
-  price: z.number().positive({ message: 'Price must be positive' }),
-  image_url: z.string().url({ message: 'Invalid URL' }).optional().or(z.literal('')),
-  youtube_url: z.string().url({ message: 'Invalid YouTube URL' }).optional().or(z.literal('')),
+  name: z.string().trim().min(1, { message: 'Name is required' }),
+  model_name: z.string().optional(), // Rendu optionnel et sans validation
+  description: z.string().max(1000).optional(),
+  price: z.number().positive(),
+  image_url: z.string().url().optional().or(z.literal('')),
+  youtube_url: z.string().url().optional().or(z.literal('')),
 });
+
+interface Product {
+  name: string;
+  model_name?: string;
+  description?: string;
+  price: number;
+  image_url?: string;
+  youtube_url?: string;
+  category?: string;
+  featured: boolean;
+}
 
 const ProductForm = () => {
   const navigate = useNavigate();
@@ -29,16 +40,33 @@ const ProductForm = () => {
     name: '',
     model_name: '',
     description: '',
-    price: '',
+    price: 0,
     image_url: '',
     youtube_url: '',
+    category: '',
+    featured: false,
   });
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
+    fetchCategories();
     if (isEditing && id) {
       fetchProduct(id);
     }
   }, [id, isEditing]);
+
+  const fetchCategories = async () => {
+    // Modifier pour utiliser la table categories au lieu de products
+    const { data, error } = await supabase
+      .from('categories')
+      .select('name')
+      .order('name');
+    
+    if (!error && data) {
+      const uniqueCats = data.map((cat: { name: string }) => cat.name);
+      setCategories(uniqueCats);
+    }
+  };
 
   const fetchProduct = async (productId: string) => {
     const { data, error } = await supabase
@@ -53,10 +81,13 @@ const ProductForm = () => {
     } else {
       setFormData({
         name: data.name,
+        model_name: data.model_name || '',
         description: data.description || '',
         price: data.price.toString(),
         image_url: data.image_url || '',
         youtube_url: data.youtube_url || '',
+        category: data.category || '',
+        featured: data.featured || false,
       });
     }
   };
@@ -85,6 +116,8 @@ const ProductForm = () => {
       price: parseFloat(formData.price),
       image_url: formData.image_url.trim() || null,
       youtube_url: formData.youtube_url.trim() || null,
+      category: formData.category || null,
+      featured: formData.featured, // Ajouter featured aux données à sauvegarder
     };
 
     if (isEditing && id) {
@@ -113,6 +146,43 @@ const ProductForm = () => {
     }
 
     setLoading(false);
+  };
+
+  const handleCreateCategory = async () => {
+    if (!formData.newCategory.trim()) return;
+
+    try {
+      const newCat = formData.newCategory.trim();
+      
+      // 1. Créer la nouvelle catégorie
+      const { error: categoryError } = await supabase
+        .from('categories')
+        .insert([{ name: newCat }]);
+
+      if (categoryError) {
+        if (categoryError.code === '23505') { // Code pour duplicate
+          toast.error('Cette catégorie existe déjà');
+        } else {
+          throw categoryError;
+        }
+        return;
+      }
+
+      // 2. Rafraîchir la liste des catégories
+      await fetchCategories();
+
+      // 3. Sélectionner la nouvelle catégorie
+      setFormData(prev => ({
+        ...prev,
+        category: newCat,
+        newCategory: ''
+      }));
+
+      toast.success('Catégorie créée avec succès');
+    } catch (error) {
+      toast.error("Erreur lors de la création de la catégorie");
+      console.error(error);
+    }
   };
 
   return (
@@ -194,7 +264,17 @@ const ProductForm = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image_url">Image URL</Label>
+                <Label htmlFor="image_url" className="flex items-center justify-between">
+                  <span>Image URL</span>
+                  <a 
+                    href="https://postimages.org/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-red-500 hover:text-red-400 transition-colors duration-300"
+                  >
+                    Get URL
+                  </a>
+                </Label>
                 <Input
                   id="image_url"
                   type="url"
@@ -217,7 +297,17 @@ const ProductForm = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="youtube_url">YouTube Demo Video URL</Label>
+                <Label htmlFor="youtube_url" className="flex items-center justify-between">
+                  <span>YouTube Demo Video URL</span>
+                  <a 
+                    href="https://www.youtube.com/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-red-500 hover:text-red-400 transition-colors duration-300"
+                  >
+                    Get URL
+                  </a>
+                </Label>
                 <Input
                   id="youtube_url"
                   type="url"
@@ -238,6 +328,57 @@ const ProductForm = () => {
                     ></iframe>
                   </div>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">Catégorie</Label>
+                <div className="flex gap-2 items-center">
+                  <select
+                    id="category"
+                    value={formData.category}
+                    onChange={e => setFormData({ ...formData, category: e.target.value, newCategory: '' })}
+                    className="flex-1 px-4 py-2 rounded-lg bg-zinc-900 text-white border border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="">Choisir une catégorie</option>
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      value={formData.newCategory}
+                      onChange={e => setFormData({ ...formData, newCategory: e.target.value, category: '' })}
+                      placeholder="Nouvelle catégorie"
+                      className="w-40"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleCreateCategory}
+                      className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 px-3"
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
+                {formData.category && (
+                  <p className="text-sm text-green-500 mt-1">
+                    Catégorie sélectionnée : {formData.category}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-2 bg-zinc-900 p-4 rounded-lg border border-red-600">
+                <input
+                  type="checkbox"
+                  id="featured"
+                  checked={formData.featured}
+                  onChange={(e) => setFormData(prev => ({ ...prev, featured: e.target.checked }))}
+                  className="w-4 h-4 text-red-600 border-red-600 rounded focus:ring-red-500"
+                />
+                <Label htmlFor="featured" className="text-white cursor-pointer select-none">
+                  Afficher en suggestion (première ligne)
+                </Label>
               </div>
 
               <div className="flex gap-4">

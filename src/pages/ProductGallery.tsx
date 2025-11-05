@@ -5,6 +5,8 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import heroImage from '@/assets/hero-bg.jpg';
+import { Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Product {
   id: string;
@@ -12,6 +14,8 @@ interface Product {
   description: string | null;
   price: number;
   image_url: string | null;
+  category: string | null;
+  featured: boolean;
 }
 
 const ProductGallery = () => {
@@ -19,6 +23,8 @@ const ProductGallery = () => {
   const [loading, setLoading] = useState(true);
   const [showAdmin, setShowAdmin] = useState(false);
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [newCategory, setNewCategory] = useState("");
   const { user } = useAuth();
 
   const showAdminTimer = useRef<number | null>(null);
@@ -57,13 +63,49 @@ const ProductGallery = () => {
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select('id, name, description, price, image_url, category, created_at, featured')
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      setProducts(data);
+      // Ajoute la propriété category si elle n'existe pas
+      setProducts(data.map(product => ({
+        ...product,
+        category: typeof product.category === 'string' ? product.category : null
+      })));
     }
     setLoading(false);
+  };
+
+  const handleDeleteCategory = async (categoryName: string) => {
+    try {
+      // Vérifier si la catégorie est utilisée
+      const { data: products } = await supabase
+        .from('products')
+        .select('id')
+        .eq('category', categoryName);
+
+      if (products && products.length > 0) {
+        toast.error("Impossible de supprimer une catégorie utilisée par des produits");
+        return;
+      }
+
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('name', categoryName);
+
+      if (error) throw error;
+
+      // Rafraîchir la liste des catégories
+      await fetchCategories();
+      if (category === categoryName) {
+        setCategory('');
+      }
+      toast.success('Catégorie supprimée avec succès');
+    } catch (error) {
+      toast.error("Erreur lors de la suppression de la catégorie");
+      console.error(error);
+    }
   };
 
   if (loading) {
@@ -74,15 +116,33 @@ const ProductGallery = () => {
     );
   }
 
-  // Filtrage des produits selon la recherche
+  // Extraction des catégories uniques
+  const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+
+  // Filtrage des produits selon la recherche et la catégorie
   const filteredProducts = products.filter(product => {
     const query = search.trim().toLowerCase();
-    if (!query) return true;
-    return (
+    const matchSearch =
+      !query ||
       product.name.toLowerCase().includes(query) ||
-      (product.description ? product.description.toLowerCase().includes(query) : false)
-    );
+      (product.description ? product.description.toLowerCase().includes(query) : false);
+    const matchCategory = !category || product.category === category;
+    return matchSearch && matchCategory;
   });
+
+  // Séparer les produits filtrés en deux groupes
+  const featuredProducts = filteredProducts.filter(p => p.featured);
+  const regularProducts = filteredProducts.filter(p => !p.featured);
+
+  // Ajout d'une nouvelle catégorie (admin seulement)
+  const handleAddCategory = () => {
+    const cat = newCategory.trim();
+    if (cat && !categories.includes(cat)) {
+      categories.push(cat);
+      setCategory(cat);
+      setNewCategory("");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -138,7 +198,7 @@ const ProductGallery = () => {
             transform: 'skew(-5deg)',
         }}
     >
-        Unlock Los Santos Exclusives: Your Next VIP Vehicle Awaits
+        Unlock Los Santos Exclusives: Your Next VIP  Awaits
     </p>
     
     <style>{`
@@ -180,6 +240,8 @@ const ProductGallery = () => {
               Store
             </span>
           </Link>
+          
+          {/* Barre de recherche */}
           <input
             type="text"
             value={search}
@@ -188,7 +250,24 @@ const ProductGallery = () => {
             className="w-full max-w-lg px-5 py-2 rounded-lg bg-zinc-900 text-white border border-red-600 placeholder:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 shadow"
             style={{marginRight: '1rem'}}
           />
-          <div className="flex gap-4">
+          
+          {/* Section Catégories simplifiée */}
+          <div className="flex items-center gap-2">
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              className="px-4 py-2 rounded-lg bg-zinc-900 text-white border border-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              style={{minWidth: '200px'}}
+            >
+              <option value="">Toutes les catégories</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Admin Dashboard uniquement */}
+          <div className="flex gap-4 ml-auto">
             <Link to="/admin" className={`transition-opacity duration-300 ${showAdmin ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
               <Button className="bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 shadow-lg shadow-red-500/50">
                 Admin Dashboard
@@ -198,9 +277,8 @@ const ProductGallery = () => {
         </div>
       </nav>
 
-      {/* La barre de recherche est maintenant dans la navigation */}
       {/* Products Grid */}
-      <div className="container mx-auto px-4 pb-12">
+      <div className="container mx-auto px-4 pb-12 mt-12">
         {filteredProducts.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground text-lg">Aucun produit trouvé.</p>
@@ -211,39 +289,88 @@ const ProductGallery = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <Link key={product.id} to={`/product/${product.id}`}>
-                <Card className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
-                  <div className="aspect-square overflow-hidden bg-muted">
-                    {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="h-full w-full object-cover transition-transform hover:scale-105"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center">
-                        <span className="text-muted-foreground">No image</span>
+          <div className="space-y-12">
+            {/* Suggestions */}
+            {featuredProducts.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold text-red-500">Suggestions</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {featuredProducts.slice(0, 4).map((product) => (
+                    <Link key={product.id} to={`/product/${product.id}`}>
+                      <Card className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
+                        <div className="aspect-square overflow-hidden bg-muted">
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="h-full w-full object-cover transition-transform hover:scale-105"
+                            />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center">
+                              <span className="text-muted-foreground">No image</span>
+                            </div>
+                          )}
+                        </div>
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold text-lg mb-2 line-clamp-1">{product.name}</h3>
+                          {product.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                              {product.description}
+                            </p>
+                          )}
+                        </CardContent>
+                        <CardFooter className="p-4 pt-0 flex justify-between items-center">
+                          <span className="text-2xl font-bold text-primary">
+                            ${Number(product.price).toFixed(2)}
+                          </span>
+                        </CardFooter>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Autres produits */}
+            <div className="space-y-4">
+              {featuredProducts.length > 0 && (
+                <h2 className="text-2xl font-bold text-red-500">Autres produits</h2>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {regularProducts.map((product) => (
+                  <Link key={product.id} to={`/product/${product.id}`}>
+                    <Card className="overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
+                      <div className="aspect-square overflow-hidden bg-muted">
+                        {product.image_url ? (
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="h-full w-full object-cover transition-transform hover:scale-105"
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center">
+                            <span className="text-muted-foreground">No image</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-lg mb-2 line-clamp-1">{product.name}</h3>
-                    {product.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                        {product.description}
-                      </p>
-                    )}
-                  </CardContent>
-                  <CardFooter className="p-4 pt-0 flex justify-between items-center">
-                    <span className="text-2xl font-bold text-primary">
-                      ${Number(product.price).toFixed(2)}
-                    </span>
-                  </CardFooter>
-                </Card>
-              </Link>
-            ))}
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold text-lg mb-2 line-clamp-1">{product.name}</h3>
+                        {product.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                            {product.description}
+                          </p>
+                        )}
+                      </CardContent>
+                      <CardFooter className="p-4 pt-0 flex justify-between items-center">
+                        <span className="text-2xl font-bold text-primary">
+                          ${Number(product.price).toFixed(2)}
+                        </span>
+                      </CardFooter>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
